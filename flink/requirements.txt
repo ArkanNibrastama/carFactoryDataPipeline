@@ -1,0 +1,5 @@
+apache-flink==1.18
+scikit-learn==1.6.1
+joblib==1.4.2
+xgboost==2.1.4
+s3fs==2025.5.1

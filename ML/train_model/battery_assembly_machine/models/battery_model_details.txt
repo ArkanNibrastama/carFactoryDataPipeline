@@ -1,0 +1,7 @@
+Best Model: XGBoost
+Best Parameters: {'classifier__learning_rate': 0.05, 'classifier__max_depth': 3, 'classifier__n_estimators': 100, 'classifier__scale_pos_weight': 3}
+Performance Metrics:
+  Accuracy: 0.7149
+  Precision: 0.5810
+  Recall: 0.9873
+  F1 Score: 0.7316

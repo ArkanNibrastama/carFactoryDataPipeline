@@ -1,0 +1,5 @@
+apache-airflow==2.9.3
+apache-airflow-providers-apache-spark
+pyspark==3.5.1
+psycopg2-binary
+s3fs==2025.5.1

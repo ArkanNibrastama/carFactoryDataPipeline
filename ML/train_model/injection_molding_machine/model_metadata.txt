@@ -1,0 +1,4 @@
+Best model: Random Forest
+Accuracy: 0.8531
+F1 Score: 0.7247
+Training completed: 2025-03-06T22:30:24.718971

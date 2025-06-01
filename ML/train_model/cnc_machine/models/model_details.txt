@@ -1,0 +1,7 @@
+Best Model: Gradient Boosting
+Best Parameters: {'classifier__learning_rate': 0.05, 'classifier__max_depth': 6, 'classifier__n_estimators': 200, 'classifier__subsample': 0.8}
+Performance Metrics:
+  Accuracy: 0.8023
+  Precision: 0.8854
+  Recall: 0.7087
+  F1 Score: 0.7872

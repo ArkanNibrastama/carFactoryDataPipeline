@@ -1,0 +1,15 @@
+CREATE DATABASE airflow;
+CREATE DATABASE nessie;
+CREATE DATABASE db_system;
+
+\c db_system
+
+CREATE TABLE logistics (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100),
+  stock INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.logistics REPLICA IDENTITY FULL;

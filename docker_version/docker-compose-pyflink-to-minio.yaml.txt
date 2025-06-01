@@ -1,0 +1,261 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo srvr | nc localhost 2181 | grep Mode"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms256M"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  jobmanager:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile 
+    container_name: jobmanager
+    depends_on: #new
+      mc: 
+        condition: service_started
+    ports:
+      - "8081:8081"
+    environment: #new
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - |
+        FLINK_PROPERTIES=
+        taskmanager.numberOfTaskSlots: 5
+        taskmanager.memory.process.size: 2048m
+        python.executable: python
+    working_dir: /opt/flink_jobs
+    command: jobmanager
+    volumes:
+      - ./flink/jobs:/opt/flink_jobs
+      - ./ML/models:/opt/models
+      
+    networks:
+      - streaming-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/overview"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  taskmanager1:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: taskmanager1
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+    environment: #new
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - |
+        FLINK_PROPERTIES=
+        taskmanager.numberOfTaskSlots: 5
+        taskmanager.memory.process.size: 2048m
+        python.executable: python
+    working_dir: /opt/flink_jobs
+    volumes:
+      - ./flink/jobs:/opt/flink_jobs
+      - ./ML/models:/opt/models
+    command: taskmanager
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  taskmanager2:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: taskmanager2
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+    environment: #new
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - |
+        FLINK_PROPERTIES=
+        taskmanager.numberOfTaskSlots: 5
+        taskmanager.memory.process.size: 2048m
+        python.executable: python
+    working_dir: /opt/flink_jobs
+    volumes:
+      - ./flink/jobs:/opt/flink_jobs
+      - ./ML/models:/opt/models
+    command: taskmanager
+    networks:
+      - streaming-network
+    restart: unless-stopped
+
+    # flink job submitter
+  flink-job-submitter:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: flink-job-submitter
+    depends_on:
+      jobmanager:
+        condition: service_healthy  # This is good, but let's make the healthcheck more robust
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./flink/jobs:/opt/flink_jobs
+      - ./ML/models:/opt/models
+    environment:
+      - FLINK_JOBMANAGER_ADDRESS=jobmanager
+      - KAFKA_BROKER=kafka:9092
+    working_dir: /opt/flink_jobs
+    command: > #new
+      sh -c "
+        sleep 5;
+        echo 'Submitting arm robot machine to minio job...';
+        flink run -d -m jobmanager:8081 -py arm_robot_machine_to_minio_job.py;
+        echo 'Submitting cnc machine to minio job...';
+        flink run -d -m jobmanager:8081 -py cnc_machine_to_minio_job.py;
+        echo 'Submitting injection molding machine to minio job...';
+        flink run -d -m jobmanager:8081 -py injection_molding_machine_to_minio_job.py;
+        echo 'Submitting battery assembly machine to minio job...';
+        flink run -d -m jobmanager:8081 -py battery_assembly_machine_to_minio_job.py;
+        sleep infinity;
+      "
+    networks:
+      - streaming-network
+  arm-robot-machine-data-generator:
+    image: python:3.9-slim
+    container_name: arm-robot-machine-data-generator
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=arm_robot_machine_sensor
+    volumes:
+      - ./datagenerator/arm_robot_machine_sensor:/app
+    working_dir: /app
+    command: sh -c "pip install -r requirements.txt && python arm_robot_machine_sensor.py"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  cnc-machine-data-generator:
+    image: python:3.9-slim
+    container_name: cnc-machine-data-generator
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=cnc_machine_sensor
+    volumes:
+      - ./datagenerator/cnc_machine_sensor:/app
+    working_dir: /app
+    command: sh -c "pip install -r requirements.txt && python cnc_machine_sensor.py"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  injection-molding-data-generator:
+    image: python:3.9-slim
+    container_name: injection-molding-data-generator
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=injection_molding_machine_sensor
+    volumes:
+      - ./datagenerator/injection_molding_machine_sensor:/app
+    working_dir: /app
+    command: sh -c "pip install -r requirements.txt && python injection_molding_machine_sensor.py"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  battery-assembly-data-generator:
+    image: python:3.9-slim
+    container_name: battery-assembly-data-generator
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=battery_assembly_machine_sensor
+    volumes:
+      - ./datagenerator/battery_assembly_machine_sensor:/app
+    working_dir: /app
+    command: sh -c "pip install -r requirements.txt && python battery_assembly_machine_sensor.py"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - streaming-network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9001:9001"
+      - "9002:9002"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --address ":9001" --console-address ":9002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - streaming-network
+    restart: unless-stopped
+  mc:
+    image: minio/mc:latest
+    container_name: mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes: #new
+    - ./ML/models:/models
+    entrypoint: > #new
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9001 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/warehouse myminio/datalake myminio/model --ignore-existing;
+      /usr/bin/mc anonymous set public myminio/warehouse myminio/datalake myminio/model;
+      /usr/bin/mc cp ./models/ myminio/model/ --recursive;
+      exit 0;
+      "
+    networks:
+      - streaming-network
+
+
+networks:
+  streaming-network:
+    driver: bridge

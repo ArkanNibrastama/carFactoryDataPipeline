@@ -1,4 +1,4 @@
 virenv/
-./20250530153539.parquet
-./query.sql
-./read_parquet.py
+20250530153539.parquet
+query.sql
+read_parquet.py

@@ -4,10 +4,10 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 
 spark = SparkSession.builder \
      .appName("InitLakehouseSchema") \
-     .config('spark.jars', '/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar,'
-            '/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.262.jar,'
-            '/opt/bitnami/spark/jars/iceberg-spark-runtime-3.5_2.12-1.5.0.jar,'
-            '/opt/bitnami/spark/jars/nessie-spark-extensions-3.5_2.12-0.76.6.jar') \
+     .config('spark.jars', '/opt/spark/jars/hadoop-aws-3.3.4.jar,'
+            '/opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar,'
+            '/opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.5.0.jar,'
+            '/opt/spark/jars/nessie-spark-extensions-3.5_2.12-0.76.6.jar') \
     .config('spark.sql.extensions', 
             'org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,'
             'org.projectnessie.spark.extensions.NessieSparkSessionExtensions') \
@@ -86,7 +86,7 @@ columns_battery_assembly_machine = StructType([
     StructField("electrode_temperature_celsius", DoubleType(), True),
     StructField("cooling_system_temperature_celsius", DoubleType(), True),
     StructField("alignment_accuracy_mm", DoubleType(), True),
-    StructField("spindlevacuum_pressure_kpa_speed_rpm", DoubleType(), True),
+    StructField("vacuum_pressure_kpa", DoubleType(), True),
     StructField("cell_voltage_uniformity_ratio", DoubleType(), True),
     StructField("insulation_resistance_mohm", DoubleType(), True),
     StructField("leakage_current_ma", DoubleType(), True),

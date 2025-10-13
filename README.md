@@ -82,6 +82,21 @@ The data pipeline architecture is designed to handle both real-time and batch da
     docker-compose up -d
     ```
 
+    Or run per section
+    
+    ```bash
+    docker-compose --profile streamProcessing up -d
+    ```
+    ```bash
+    docker-compose --profile cdc up -d 
+    ```
+    ```bash
+    docker-compose --profile batchProcessing up -d 
+    ```
+    ```bash
+    docker-compose --profile lakehouse up -d 
+    ```
+
 4.  Verify the Installation
     * Access the service UIs:
         * **MinIO Console:** http://localhost:9002

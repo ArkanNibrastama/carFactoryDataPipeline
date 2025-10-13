@@ -113,7 +113,7 @@ def load_model_from_minio():
     )
 
     # Path to the model file in the MinIO bucket
-    model_path = 'model/robotic_arm_failure_prediction_model.pkl'
+    model_path = 'model/battery_failure_prediction_model.pkl'
 
     # Open the file using s3fs and load it with joblib
     with fs.open(model_path, 'rb') as f:

@@ -1,3 +1,5 @@
+# add more detail on project set up
+
 x-airflow-common: 
   &airflow-common
   build:
@@ -13,6 +15,9 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: false
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: true
+    AIRFLOW__CORE__PARALLELISM: 8
+    AIRFLOW__CORE__DAG_CONCURRENCY: 4
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 1
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./spark/jobs:/opt/airflow/jobs
@@ -23,6 +28,10 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     container_name: zookeeper
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     ports:
       - "2181:2181"
     environment:
@@ -39,6 +48,10 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: kafka
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -54,7 +67,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 24
-      KAFKA_HEAP_OPTS: "-Xmx512M -Xms256M"
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms128M"
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 30s
@@ -68,6 +81,10 @@ services:
       context: ./flink
       dockerfile: Dockerfile 
     container_name: jobmanager
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     depends_on: 
       mc: 
         condition: service_started
@@ -75,11 +92,6 @@ services:
       - "8081:8081"
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
-      - |
-        FLINK_PROPERTIES=
-        taskmanager.numberOfTaskSlots: 5
-        taskmanager.memory.process.size: 2048m
-        python.executable: python
     working_dir: /opt/flink_jobs
     command: jobmanager
     volumes:
@@ -97,6 +109,10 @@ services:
       context: ./flink
       dockerfile: Dockerfile
     container_name: taskmanager1
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     depends_on:
       jobmanager:
         condition: service_healthy
@@ -104,8 +120,8 @@ services:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
       - |
         FLINK_PROPERTIES=
-        taskmanager.numberOfTaskSlots: 5
-        taskmanager.memory.process.size: 2048m
+        taskmanager.numberOfTaskSlots: 3
+        taskmanager.memory.process.size: 1512m
         python.executable: python
     working_dir: /opt/flink_jobs
     volumes:
@@ -119,6 +135,10 @@ services:
       context: ./flink
       dockerfile: Dockerfile
     container_name: taskmanager2
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     depends_on:
       jobmanager:
         condition: service_healthy
@@ -126,8 +146,8 @@ services:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
       - |
         FLINK_PROPERTIES=
-        taskmanager.numberOfTaskSlots: 5
-        taskmanager.memory.process.size: 2048m
+        taskmanager.numberOfTaskSlots: 3
+        taskmanager.memory.process.size: 1512m
         python.executable: python
     working_dir: /opt/flink_jobs
     volumes:
@@ -137,12 +157,42 @@ services:
       - streaming-network
     restart: unless-stopped
 
-    # flink job submitter
+  taskmanager3:
+    build:
+      context: ./flink
+      dockerfile: Dockerfile
+    container_name: taskmanager3
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
+    depends_on:
+      jobmanager:
+        condition: service_healthy
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - |
+        FLINK_PROPERTIES=
+        taskmanager.numberOfTaskSlots: 3
+        taskmanager.memory.process.size: 1512m
+        python.executable: python
+    working_dir: /opt/flink_jobs
+    volumes:
+      - ./flink/jobs:/opt/flink_jobs
+    command: taskmanager
+    networks:
+      - streaming-network
+    restart: unless-stopped
+
   flink-job-submitter:
     build:
       context: ./flink
       dockerfile: Dockerfile
     container_name: flink-job-submitter
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
     depends_on:
       jobmanager:
         condition: service_healthy  # This is good, but let's make the healthcheck more robust
@@ -159,88 +209,52 @@ services:
         sleep 3;
         echo 'Submitting arm robot machine to clickhouse job...';
         flink run -d -m jobmanager:8081 -py arm_robot_machine_to_clickhouse_job.py;
+        sleep 1;
         echo 'Submitting cnc machine to clickhouse job...';
         flink run -d -m jobmanager:8081 -py cnc_machine_to_clickhouse_job.py;
+        sleep 1;
         echo 'Submitting injection molding machine to clickhouse job...';
         flink run -d -m jobmanager:8081 -py injection_molding_machine_to_clickhouse_job.py;
+        sleep 1;
         echo 'Submitting battery assembly machine to clickhouse job...';
         flink run -d -m jobmanager:8081 -py battery_assembly_machine_to_clickhouse_job.py;
-
+        sleep 1;
         echo 'Submitting arm robot machine to minio job...';
         flink run -d -m jobmanager:8081 -py arm_robot_machine_to_minio_job.py;
+        sleep 1;
         echo 'Submitting cnc machine to minio job...';
         flink run -d -m jobmanager:8081 -py cnc_machine_to_minio_job.py;
+        sleep 1;
         echo 'Submitting injection molding machine to minio job...';
         flink run -d -m jobmanager:8081 -py injection_molding_machine_to_minio_job.py;
+        sleep 1;
         echo 'Submitting battery assembly machine to minio job...';
         flink run -d -m jobmanager:8081 -py battery_assembly_machine_to_minio_job.py;
 
+        sleep 2;
         echo 'Submitting CDC job...';
         flink run -d -m jobmanager:8081 -py cdc_sink_job.py;
-
-        sleep infinity;
+        
       "
     networks:
       - streaming-network
       
-  arm-robot-machine-data-generator:
-    image: python:3.9-slim
-    container_name: arm-robot-machine-data-generator
+  iot-sensor-data-generator:
+    image: python:3.9-alpine
+    container_name: iot-sensor-data-generator
+    profiles:
+      - default
+      - streamProcessing
     environment:
       - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC=arm_robot_machine_sensor
+      - KAFKA_TOPIC_ARM_ROBOT=arm_robot_machine_sensor
+      - KAFKA_TOPIC_CNC=cnc_machine_sensor
+      - KAFKA_TOPIC_INJECTION_MOLDING=injection_molding_machine_sensor
+      - KAFKA_TOPIC_BATTERY_ASSEMBLY=battery_assembly_machine_sensor
     volumes:
-      - ./datagenerator/arm_robot_machine_sensor:/app
+      - ./datagenerator:/app
     working_dir: /app
-    command: sh -c "pip install -r requirements.txt && python arm_robot_machine_sensor.py"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    networks:
-      - streaming-network
-    restart: unless-stopped
-  cnc-machine-data-generator:
-    image: python:3.9-slim
-    container_name: cnc-machine-data-generator
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC=cnc_machine_sensor
-    volumes:
-      - ./datagenerator/cnc_machine_sensor:/app
-    working_dir: /app
-    command: sh -c "pip install -r requirements.txt && python cnc_machine_sensor.py"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    networks:
-      - streaming-network
-    restart: unless-stopped
-  injection-molding-data-generator:
-    image: python:3.9-slim
-    container_name: injection-molding-data-generator
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC=injection_molding_machine_sensor
-    volumes:
-      - ./datagenerator/injection_molding_machine_sensor:/app
-    working_dir: /app
-    command: sh -c "pip install -r requirements.txt && python injection_molding_machine_sensor.py"
-    depends_on:
-      kafka:
-        condition: service_healthy
-    networks:
-      - streaming-network
-    restart: unless-stopped
-  battery-assembly-data-generator:
-    image: python:3.9-slim
-    container_name: battery-assembly-data-generator
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC=battery_assembly_machine_sensor
-    volumes:
-      - ./datagenerator/battery_assembly_machine_sensor:/app
-    working_dir: /app
-    command: sh -c "pip install -r requirements.txt && python battery_assembly_machine_sensor.py"
+    command: sh -c "pip install --upgrade pip && pip install -r requirements.txt && python iot_data_generator.py"
     depends_on:
       kafka:
         condition: service_healthy
@@ -251,6 +265,9 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:25.3
     container_name: clickhouse
+    profiles:
+      - default
+      - streamProcessing
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -271,23 +288,34 @@ services:
     networks:
       - streaming-network
     restart: unless-stopped  
+
   superset:
-      build:
-        context: ./superset
-        dockerfile: Dockerfile
-      container_name: superset
-      environment:
-        - ADMIN_USERNAME=admin
-        - ADMIN_EMAIL=admin@superset.com
-        - ADMIN_PASSWORD=admin
-      ports:
-        - '8088:8088'
-      networks: #new
-        - streaming-network
-      restart: always
+    build:
+      context: ./superset
+      dockerfile: Dockerfile
+    container_name: superset
+    profiles:
+      - default
+      - streamProcessing
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@superset.com
+      - ADMIN_PASSWORD=admin
+    ports:
+      - '8088:8088'
+    networks: #new
+      - streaming-network
+    restart: always
+
   minio:
     image: minio/minio:latest
     container_name: minio
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
+      - batchProcessing
+      - lakehouse
     ports:
       - "9001:9001"
       - "9002:9002"
@@ -306,6 +334,12 @@ services:
   mc:
     image: minio/mc:latest
     container_name: mc
+    profiles:
+      - default
+      - streamProcessing
+      - cdc
+      - batchProcessing
+      - lakehouse
     depends_on:
       minio:
         condition: service_healthy
@@ -313,9 +347,9 @@ services:
     - ./ML/models:/models
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add myminio http://minio:9001 minioadmin minioadmin;
+      /usr/bin/mc alias set myminio http://minio:9001 minioadmin minioadmin;
       /usr/bin/mc mb myminio/warehouse myminio/datalake myminio/model --ignore-existing;
-      /usr/bin/mc anonymous set public myminio/warehouse myminio/datalake myminio/model;
+      /usr/bin/mc policy set public myminio/warehouse myminio/datalake myminio/model;
       /usr/bin/mc cp ./models/ myminio/model/ --recursive;
       exit 0;
       "
@@ -325,6 +359,9 @@ services:
   nessie:
     image: projectnessie/nessie:0.76.6
     container_name: nessie
+    profiles:
+      - default
+      - lakehouse
     ports:
       - "19120:19120"
     depends_on:
@@ -354,6 +391,9 @@ services:
   trino:
     image: trinodb/trino:467
     container_name: trino
+    profiles:
+      - default
+      - lakehouse
     depends_on:
       nessie:
         condition: service_healthy
@@ -374,6 +414,9 @@ services:
       context: ./spark
       dockerfile: Dockerfile
     container_name: spark-master
+    profiles:
+      - default
+      - lakehouse
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -384,7 +427,8 @@ services:
       - "7077:7077"
       - "8090:8080"
     volumes:
-      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./spark/jobs:/opt/spark/jobs
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     healthcheck:
       test: curl --fail http://localhost:8080 || exit 1
       interval: 10s
@@ -398,17 +442,21 @@ services:
       context: ./spark
       dockerfile: Dockerfile
     container_name: spark-worker-1
+    profiles:
+      - default
+      - lakehouse
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_MEMORY=1024M
       - SPARK_WORKER_CORES=1
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
     volumes:
-      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./spark/jobs:/opt/spark/jobs
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       spark-master:
         condition: service_healthy
@@ -421,17 +469,21 @@ services:
       context: ./spark
       dockerfile: Dockerfile
     container_name: spark-worker-2
+    profiles:
+      - default
+      - lakehouse
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_MEMORY=1024M
       - SPARK_WORKER_CORES=1
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
       - SPARK_RPC_ENCRYPTION_ENABLED=no
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
     volumes:
-      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./spark/jobs:/opt/spark/jobs
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       spark-master:
         condition: service_healthy
@@ -439,20 +491,23 @@ services:
       - streaming-network
     restart: unless-stopped
 
-  # spark submitter buat create schema & table
+  # # spark submitter buat create schema & table
   spark-submitter:
     build:
       context: ./spark
       dockerfile: Dockerfile
     container_name: spark-submitter
+    profiles:
+      - default
+      - lakehouse
     volumes:
-      - ./spark/jobs:/opt/bitnami/spark/jobs
+      - ./spark/jobs:/opt/spark/jobs
     entrypoint: ["/bin/bash", "-c"]
     command: >
       "
-      /opt/bitnami/spark/bin/spark-submit 
-      --master spark://spark-master:7077 
-      /opt/bitnami/spark/jobs/init_lakehouse.py
+      /opt/spark/bin/spark-submit \
+      --master spark://spark-master:7077 \
+      /opt/spark/jobs/init_lakehouse.py
       "
     depends_on:
       spark-master:
@@ -465,10 +520,20 @@ services:
   postgres:
     image: postgres:14
     container_name: postgres
+    profiles:
+      - default
+      - cdc
+      - batchProcessing
+      - lakehouse
     environment:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=admin
-    command: postgres -c 'wal_level=logical'
+    command: >
+      postgres 
+      -c wal_level=logical
+      -c shared_buffers=128MB 
+      -c max_connections=50
+      -c effective_cache_size=256MB
     volumes:
       - ./postgres:/docker-entrypoint-initdb.d
     ports:
@@ -483,12 +548,20 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    profiles:
+      - default
+      - batchProcessing
+      - lakehouse
     depends_on:
       postgres:
         condition: service_healthy
     command: bash -c "airflow db migrate && airflow users create --username admin --firstname Joao --lastname Muniz --role Admin --email admin@gmail.com --password admin"
   airflow-webserver:
     <<: *airflow-common
+    profiles:
+      - default
+      - batchProcessing
+      - lakehouse
     command: webserver
     ports:
       - "8089:8080"
@@ -505,6 +578,10 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
+    profiles:
+      - default
+      - batchProcessing
+      - lakehouse
     command: scheduler
     restart: always
     depends_on:
@@ -519,6 +596,9 @@ services:
 
   airflow-cli:
     <<: *airflow-common
+    profiles:
+      - default
+      - lakehouse
     depends_on:
       airflow-init:
         condition: service_completed_successfully
@@ -536,6 +616,9 @@ services:
   debezium:
     image: debezium/connect:2.6
     container_name: debezium
+    profiles:
+      - default
+      - cdc
     depends_on:
       kafka:
         condition: service_healthy
@@ -567,6 +650,9 @@ services:
       context: ./debezium
       dockerfile: Dockerfile
     container_name: debezium-connector
+    profiles:
+      - default
+      - cdc
     volumes:
       - ./debezium/connectors/:/debezium_connectors/
     working_dir: /

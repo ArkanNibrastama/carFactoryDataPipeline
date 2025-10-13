@@ -3,28 +3,30 @@ from datetime import date, timedelta
 import sys
 
 yesterday = (date.today() - timedelta(days = 1)).strftime('%Y%m%d')
-date = sys.argv[1] if (len(sys.argv) > 1) or (len(sys.argv) == 0) else yesterday
+date = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].strip() else yesterday
 source_path = f"s3a://datalake/sensor_data/arm_robot_sensor/{date}/"
+
 
 spark = SparkSession.builder \
     .appName("UpsertDataToArmRobotIceberg") \
-    .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog") \
-    .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog") \
-    .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v2") \
-    .config("spark.sql.catalog.nessie.ref", "main") \
-    .config("spark.sql.catalog.nessie.authentication.type", "NONE") \
-    .config("spark.sql.catalog.nessie.warehouse", "s3a://warehouse") \
-    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9001") \
-    .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
-    .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
-    .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
-    .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-      .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
     .getOrCreate()
 
-df = spark.read.option("header", "true").format("parquet").load(source_path)
-df.show()
+
+print(f"Reading from: {source_path}")
+print(f"Date argument: {date}")
+
+try:
+    df = spark.read.parquet(source_path)
+    if df.count() == 0:
+        print(f"No data found in {source_path}")
+        spark.stop()
+        sys.exit(0)
+except Exception as e:
+    print(f"Error reading from {source_path}: {e}")
+    spark.stop()
+    sys.exit(1)
+
+
 print(f"Number of records: {df.count()}")
 df.createOrReplaceTempView("staging_data")
 

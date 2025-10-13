@@ -2,9 +2,11 @@ virenv/
 20250530153539.parquet
 query.sql
 read_parquet.py
-/__pycache__/
+*/*/__pycache__/*
 datagenerator/test/
 docker_version/
 flink/jobs/test.py
 flink/jobs/test2.py
 monitor.sh
+caption.txt
+airflow/dags/__pycache__/

@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
 from datetime import date, timedelta
+from pyspark.sql.window import Window
+from pyspark.sql.functions import avg
 import sys
 
 yesterday = (date.today() - timedelta(days = 1)).strftime('%Y%m%d')
@@ -25,6 +27,16 @@ except Exception as e:
     sys.exit(1)
     
 print(f"Number of records: {df.count()}")
+
+windowMovAvgBarrelTemp = Window.partitionBy('machine_id').\
+                                orderBy('timestamp').\
+                                rowsBetween(-6, 0)
+
+df = df.withColumn(
+    "moving_avg_barrel_temperature",
+    avg('barrel_temperature_celsius').over(windowMovAvgBarrelTemp)
+)
+
 df.createOrReplaceTempView("staging_data")
 
 spark.sql("""
@@ -34,6 +46,7 @@ ON target.timestamp = source.timestamp AND target.machine_id = source.machine_id
 WHEN MATCHED THEN 
     UPDATE SET 
       barrel_temperature_celsius = source.barrel_temperature_celsius,
+      moving_avg_barrel_temperature = source.moving_avg_barrel_temperature,
       mold_temperature_celsius = source.mold_temperature_celsius,
       injection_pressure_bar = source.injection_pressure_bar,
       holding_pressure_bar = source.holding_pressure_bar,
@@ -51,6 +64,7 @@ WHEN NOT MATCHED THEN
       machine_id,
       machine_type,
       barrel_temperature_celsius,
+      moving_avg_barrel_temperature,
       mold_temperature_celsius,
       injection_pressure_bar,
       holding_pressure_bar,
@@ -68,6 +82,7 @@ WHEN NOT MATCHED THEN
       source.machine_id,
       source.machine_type,
       source.barrel_temperature_celsius,
+      source.moving_avg_barrel_temperature,
       source.mold_temperature_celsius,
       source.injection_pressure_bar,
       source.holding_pressure_bar,

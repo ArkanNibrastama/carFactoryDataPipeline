@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
 from datetime import date, timedelta
+from pyspark.sql.window import Window
+from pyspark.sql.functions import avg
 import sys
 
 yesterday = (date.today() - timedelta(days = 1)).strftime('%Y%m%d')
@@ -28,7 +30,19 @@ except Exception as e:
 
 
 print(f"Number of records: {df.count()}")
+
+# windows function logic (moving avg for temperature in range 7 records)
+windowMovAvg = Window.partitionBy("machine_id").\
+                      orderBy("timestamp").\
+                      rowsBetween(-6, 0)
+
+df = df.withColumn(
+          "moving_avg_temperature_celsius", 
+          avg("temperature_celsius").over(windowMovAvg)
+        )
+
 df.createOrReplaceTempView("staging_data")
+
 
 spark.sql("""
 MERGE INTO nessie.nessie_catalog.arm_robot_sensor AS target
@@ -39,6 +53,7 @@ WHEN MATCHED THEN
       servo_motor_rpm = source.servo_motor_rpm,
       hydraulic_pressure_psi = source.hydraulic_pressure_psi,
       temperature_celsius = source.temperature_celsius,
+      moving_avg_temperature_celsius = source.moving_avg_temperature_celsius,
       vibration_mm_per_s = source.vibration_mm_per_s,
       operation_time_hours = source.operation_time_hours,
       cycle_count = source.cycle_count,
@@ -51,6 +66,7 @@ WHEN NOT MATCHED THEN
       servo_motor_rpm,
       hydraulic_pressure_psi,
       temperature_celsius,
+      moving_avg_temperature_celsius,
       vibration_mm_per_s,
       operation_time_hours,
       cycle_count,
@@ -63,6 +79,7 @@ WHEN NOT MATCHED THEN
       source.servo_motor_rpm,
       source.hydraulic_pressure_psi,
       source.temperature_celsius,
+      source.moving_avg_temperature_celsius,
       source.vibration_mm_per_s,
       source.operation_time_hours,
       source.cycle_count,

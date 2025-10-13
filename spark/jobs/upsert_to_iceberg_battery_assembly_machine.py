@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
 from datetime import date, timedelta
+from pyspark.sql.window import Window
+from pyspark.sql.functions import avg
 import sys
 
 yesterday = (date.today() - timedelta(days = 1)).strftime('%Y%m%d')
@@ -25,6 +27,16 @@ except Exception as e:
     sys.exit(1)
     
 print(f"Number of records: {df.count()}")
+
+windowMovAvgCoolingSystemTemp = Window.partitionBy('machine_id').\
+                                       orderBy('timestamp').\
+                                       rowsBetween(-6, 0)
+
+df = df.withColumn(
+    "moving_avg_cooling_system_temperature",
+    avg('cooling_system_temperature_celsius').over(windowMovAvgCoolingSystemTemp)
+)
+
 df.createOrReplaceTempView("staging_data")
 
 spark.sql("""
@@ -37,6 +49,7 @@ WHEN MATCHED THEN
       welding_voltage_volts = source.welding_voltage_volts,
       electrode_temperature_celsius = source.electrode_temperature_celsius,
       cooling_system_temperature_celsius = source.cooling_system_temperature_celsius,
+      moving_avg_cooling_system_temperature = source.moving_avg_cooling_system_temperature,
       alignment_accuracy_mm = source.alignment_accuracy_mm,
       vacuum_pressure_kpa = source.vacuum_pressure_kpa,
       cell_voltage_uniformity_ratio = source.cell_voltage_uniformity_ratio,
@@ -54,6 +67,7 @@ WHEN NOT MATCHED THEN
       welding_voltage_volts,
       electrode_temperature_celsius,
       cooling_system_temperature_celsius,
+      moving_avg_cooling_system_temperature,
       alignment_accuracy_mm,
       vacuum_pressure_kpa,
       cell_voltage_uniformity_ratio,
@@ -71,6 +85,7 @@ WHEN NOT MATCHED THEN
       source.welding_voltage_volts,
       source.electrode_temperature_celsius,
       source.cooling_system_temperature_celsius,
+      source.moving_avg_cooling_system_temperature,
       source.alignment_accuracy_mm,
       source.vacuum_pressure_kpa,
       source.cell_voltage_uniformity_ratio,

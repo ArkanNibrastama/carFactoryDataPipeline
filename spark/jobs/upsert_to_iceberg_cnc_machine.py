@@ -1,5 +1,7 @@
 from pyspark.sql import SparkSession
 from datetime import date, timedelta
+from pyspark.sql.window import Window
+from pyspark.sql.functions import avg
 import sys
 
 yesterday = (date.today() - timedelta(days = 1)).strftime('%Y%m%d')
@@ -25,6 +27,16 @@ except Exception as e:
     sys.exit(1)
 
 print(f"Number of records: {df.count()}")
+
+windowsMovAvgMotorTemp = Window.partitionBy('machine_id').\
+                                orderBy('timestamp').\
+                                rowsBetween(-6, 0)
+                           
+df = df.withColumn(
+      "moving_avg_motor_temperature", 
+      avg('motor_temperature_celcius').over(windowsMovAvgMotorTemp)
+    )
+
 df.createOrReplaceTempView("staging_data")
 
 spark.sql("""
@@ -36,6 +48,7 @@ WHEN MATCHED THEN
       spindle_speed_rpm = source.spindle_speed_rpm,
       cutting_force_n = source.cutting_force_n,
       motor_temperature_celsius = source.motor_temperature_celsius,
+      moving_avg_motor_temperature = source.moving_avg_motor_temperature,
       coolant_temperature_celsius = source.coolant_temperature_celsius,
       coolant_flow_rate_l_min = source.coolant_flow_rate_l_min,
       vibration_mm_per_s = source.vibration_mm_per_s,
@@ -50,6 +63,7 @@ WHEN NOT MATCHED THEN
       spindle_speed_rpm,
       cutting_force_n,
       motor_temperature_celsius,
+      moving_avg_motor_temperature,
       coolant_temperature_celsius,
       coolant_flow_rate_l_min,
       vibration_mm_per_s,
@@ -64,6 +78,7 @@ WHEN NOT MATCHED THEN
       source.spindle_speed_rpm,
       source.cutting_force_n,
       source.motor_temperature_celsius,
+      source.moving_avg_motor_temperature,
       source.coolant_temperature_celsius,
       source.coolant_flow_rate_l_min,
       source.vibration_mm_per_s,

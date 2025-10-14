@@ -34,7 +34,7 @@ windowsMovAvgMotorTemp = Window.partitionBy('machine_id').\
                            
 df = df.withColumn(
       "moving_avg_motor_temperature", 
-      avg('motor_temperature_celcius').over(windowsMovAvgMotorTemp)
+      avg('motor_temperature_celsius').over(windowsMovAvgMotorTemp)
     )
 
 df.createOrReplaceTempView("staging_data")

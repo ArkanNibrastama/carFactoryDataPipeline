@@ -79,7 +79,7 @@ The data pipeline architecture is designed to handle both real-time and batch da
 
 2.  Run All Services
     ```bash
-    docker-compose up -d
+    docker-compose --profile default up -d
     ```
 
     Or run per section

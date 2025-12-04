@@ -116,8 +116,18 @@ def test_transform_and_normalize_success(sample_raw_data_success):
     
     assert pd.api.types.is_datetime64_any_dtype(facts_df['service_datetime_utc'])
     assert pd.api.types.is_datetime64_any_dtype(facts_df['service_datetime_wib'])
-    assert facts_df['service_datetime_utc'].iloc[0].tz.zone == "UTC"
-    assert facts_df['service_datetime_wib'].iloc[0].tz.zone == "Asia/Jakarta"
+    
+    # Check conversion logic (UTC+7) instead of strict .tz.zone attribute access
+    utc_time = facts_df['service_datetime_utc'].iloc[0]
+    wib_time = facts_df['service_datetime_wib'].iloc[0]
+    
+    # Ensure 7 hour difference
+    assert (wib_time - utc_time).total_seconds() == 0 # They represent same instant
+    # If we want to check the wall clock time difference (naive comparison):
+    # We can check if the hour is shifted by 7 (wrapping around 24)
+    # But better: check if WIB value printed is +7 hours vs UTC value printed
+    assert wib_time.hour == (utc_time.hour + 7) % 24
+    
     assert facts_df['total_cost'].iloc[0] == 750.0
 
     # --- Assertions for dim_dealer ---

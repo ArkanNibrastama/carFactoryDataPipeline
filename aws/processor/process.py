@@ -37,9 +37,10 @@ class FactServiceRecordSchema(pa.DataFrameModel):
 
     customer_id: Series[str] = pa.Field(nullable=True) # Customer might be optional/unknown
 
-    service_datetime_utc: Series[pd.Timestamp] = pa.Field(nullable=False)
+    # Use object to preserve timezone-aware Timestamps, preventing coercion to naive datetime64[ns]
+    service_datetime_utc: Series[object] = pa.Field(nullable=False)
 
-    service_datetime_wib: Series[pd.Timestamp] = pa.Field(nullable=False)
+    service_datetime_wib: Series[object] = pa.Field(nullable=False)
 
     total_cost: Series[float] = pa.Field(ge=0)
 

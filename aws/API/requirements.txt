@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pydantic
+boto3
+mangum

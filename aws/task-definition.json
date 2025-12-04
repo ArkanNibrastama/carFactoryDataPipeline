@@ -1,0 +1,44 @@
+{
+    "family": "car-service-processor-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ECSTask-Processor-Role",
+    "cpu": "256",
+    "memory": "512",
+    "containerDefinitions": [
+        {
+            "name": "car-service-processor",
+            "image": "<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/car-service-processor:latest",
+            "essential": true,
+            "environment": [
+                {
+                    "name": "RAW_BUCKET_NAME",
+                    "value": "service-records-raw-data-bucket"
+                },
+                {
+                    "name": "CLEANED_BUCKET_NAME",
+                    "value": "service-records-cleaned-data-bucket"
+                },
+                {
+                    "name": "ERROR_BUCKET_NAME",
+                    "value": "service-records-error-data-bucket"
+                },
+                {
+                    "name": "SQS_QUEUE_URL",
+                    "value": "https://sqs.<AWS_REGION>.amazonaws.com/<AWS_ACCOUNT_ID>/service-record-process-queue"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/car-service-processor-task",
+                    "awslogs-region": "<AWS_REGION>",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}

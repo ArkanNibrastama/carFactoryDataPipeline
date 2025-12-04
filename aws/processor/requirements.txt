@@ -1,0 +1,7 @@
+pandas
+pandera
+pyarrow
+boto3
+
+# Development/Testing Dependencies
+pytest

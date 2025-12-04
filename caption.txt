@@ -1,0 +1,51 @@
+Recently, I worked on a hands-on project to explore how data lakehouse architecture can help automotive manufacturers — especially Chinese EV brands entering Indonesia — optimize their factory operations.
+
+Here’s the story 👇
+
+🚗 The context
+Indonesia is aiming for 600K electric vehicles by 2030.
+To meet that, brands like Wuling, BYD, and Chery are building local factories.
+But scaling production efficiently is tough when:
+- Machines may fail without warning
+- Data lives in different systems
+- Decisions are based on guesswork not insights
+
+⚠️ The challenges
+- IoT sensor data exists, but it’s only used for monitoring — not predicting failures
+- Supply chain data is stored in legacy databases (PostgreSQL)
+- CRM and sales data are stuck in spreadsheets or cloud tools
+- No unified platform to connect and analyze everything
+
+🏗️ The solution: a hybrid data lakehouse
+I designed a pipeline that blends real-time streaming and batch processing to turn disconnected data into actionable insights:
+- IoT sensor data → streamed via Kafka for real-time monitoring + stored for ML and analytics
+- PostgreSQL (CDC) → captured with Debezium to track supply chain events
+- CRM data → ingested in batch with Airflow and centralized for analysis
+
+🛠️ Tech stack
+Kafka for streaming ingestion
+- Apache Flink for real-time processing
+- PostgreSQL + Debezium for CDC
+- ClickHouse for operational analytics
+- Apache Spark for batch processing
+- Apache Iceberg for the lakehouse table format
+- MinIO for cloud-native object storage
+- Airflow for orchestration
+- Trino for interactive SQL queries
+- Project Nessie for Git-like data versioning
+- Superset for dashboarding
+
+✅ With this architecture, the factory can:
+- Prevent machine failures with predictive maintenance
+- Align production with real market demand
+- Make faster, data-driven decisions across teams
+
+This hands-on project helped me connect my passion for data engineering with real industrial challenges — and see how powerful modern data architecture can be when it’s applied right.
+
+Architecture below 👇
+See details on Github — https://github.com/ArkanNibrastama/carFactoryDataPipeline
+
+Would love to hear your thoughts or feedback!
+
+#dataengineering #lakehouse #apacheiceberg
+

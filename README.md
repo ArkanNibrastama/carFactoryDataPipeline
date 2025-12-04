@@ -58,6 +58,32 @@ The data pipeline architecture is designed to handle both real-time and batch da
 * **Full Machine Learning Lifecycle:** Supports the end-to-end process from model development and deployment to leveraging model outputs for decision-making.
 
 
+## **Cloud Expansion: Car Dealership Service Network**
+
+As the manufacturing operations stabilize, the project scope has expanded to the **after-sales service network**. We are now ingesting data from car dealership service centers across Indonesia to analyze vehicle performance in the real world.
+
+### **Service Records Business Process**
+When a customer brings their vehicle to a dealership for maintenance or repair, a **Service Record** is generated. This record contains critical information:
+*   **Vehicle Details:** VIN, odometer reading, model.
+*   **Service Details:** Services performed (e.g., "Brake Pad Replacement"), parts replaced, and technician notes.
+*   **Dealer & Customer Info:** Location of the service and customer demographics.
+
+Unlike the structured data from factory robots, this data is semi-structured and arrives in unpredictable bursts from various locations.
+
+### **AWS Cloud Architecture**
+To handle this variable workload, we implemented a **Serverless Data Pipeline** on AWS.
+
+![AWS Architecture](./img/service_records_architecture.png)
+
+**Quick Flow Overview:**
+1.  **Ingest:** Dealerships push JSON data to a secure **API Gateway**.
+2.  **Buffer:** **SQS** queues incoming data to prevent system overload.
+3.  **Process:** **ECS Fargate** containers spin up on-demand to validate and transform the data.
+4.  **Store:** Validated data is loaded into **DynamoDB** for operational access and **S3** for long-term analytics.
+
+👉 **[Click here for the full AWS Project Documentation and Setup Guide](./aws/README.md)**
+
+
 ## **Project Set Up**
 
 ### Prerequisites
@@ -79,7 +105,22 @@ The data pipeline architecture is designed to handle both real-time and batch da
 
 2.  Run All Services
     ```bash
-    docker-compose up -d
+    docker-compose --profile default up -d
+    ```
+
+    Or run per section
+    
+    ```bash
+    docker-compose --profile streamProcessing up -d
+    ```
+    ```bash
+    docker-compose --profile cdc up -d 
+    ```
+    ```bash
+    docker-compose --profile batchProcessing up -d 
+    ```
+    ```bash
+    docker-compose --profile lakehouse up -d 
     ```
 
 4.  Verify the Installation

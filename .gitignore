@@ -2,9 +2,15 @@ virenv/
 20250530153539.parquet
 query.sql
 read_parquet.py
-/__pycache__/
-datagenerator/test/
+__pycache__/
+*.pyc
+.pytest_cache/
 docker_version/
 flink/jobs/test.py
 flink/jobs/test2.py
 monitor.sh
+architecture/
+aws/pw.txt
+caption.txt
+aws/setup.md
+aws/context.md

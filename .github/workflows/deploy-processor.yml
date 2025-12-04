@@ -67,7 +67,12 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f aws/processor/Dockerfile aws/processor
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          
+          # Also push 'latest' tag
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Inject secrets into Task Definition
         run: |

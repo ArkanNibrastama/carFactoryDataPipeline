@@ -6,6 +6,9 @@ name: Deploy Processor to ECS
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'aws/processor/**'
+      - '.github/workflows/deploy-processor.yml'
 
 # These environment variables will be available to all jobs in the workflow
 env:

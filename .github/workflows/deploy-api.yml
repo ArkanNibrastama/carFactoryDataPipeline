@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'aws/API/**' # Only trigger when files in the API directory change
+      - '.github/workflows/deploy-api.yml'
 
 env:
   AWS_REGION: ap-southeast-1

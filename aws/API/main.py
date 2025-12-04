@@ -18,13 +18,13 @@ RAW_BUCKET_NAME = os.environ.get("RAW_BUCKET_NAME")
 
 class Dealer(BaseModel):
     dealer_id: str
-    dealer_name: Optional[str] = None
-    dealer_location: Optional[str] = None
+    dealer_name: str
+    dealer_location: str
 
 class Vehicle(BaseModel):
     vin: str
-    model: Optional[str] = None
-    year: Optional[int] = None
+    model: str
+    year: int
     odometer_reading: int
 
 class ServicePerformed(BaseModel):
@@ -41,14 +41,14 @@ class PartUsed(BaseModel):
 
 class ServiceDetails(BaseModel):
     service_date: datetime
-    service_advisor_name: Optional[str] = None
+    service_advisor_name: str
     total_cost: float
     services_performed: List[ServicePerformed] = []
     parts_used: List[PartUsed] = []
 
 class Customer(BaseModel):
-    customer_id: Optional[str] = None
-    customer_name: Optional[str] = None
+    customer_id: str
+    customer_name: str
 
 class ServiceRecord(BaseModel):
     service_record_id: str

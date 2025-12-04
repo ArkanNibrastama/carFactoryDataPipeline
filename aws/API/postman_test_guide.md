@@ -38,7 +38,7 @@ This guide provides a full example of how to test the deployed API endpoint usin
 [
   {
     "service_record_id": "SRV-2025-001345",
-    "dealer": { "dealer_id": "DEALER-JKT-01", "dealer_name": "Prestige Auto Jakarta" },
+    "dealer": { "dealer_id": "DEALER-JKT-01", "dealer_name": "Prestige Auto Jakarta", "dealer_location": "Jakarta" },
     "vehicle": { "vin": "JN1AZ000000C12345", "model": "Grand Livina", "year": 2023, "odometer_reading": 30152 },
     "service_details": {
       "service_date": "2025-11-20T11:05:30Z",
@@ -51,7 +51,7 @@ This guide provides a full example of how to test the deployed API endpoint usin
   },
   {
     "service_record_id": "SRV-2025-001346",
-    "dealer": { "dealer_id": "DEALER-JKT-01", "dealer_name": "Prestige Auto Jakarta" },
+    "dealer": { "dealer_id": "DEALER-JKT-01", "dealer_name": "Prestige Auto Jakarta", "dealer_location": "Jakarta" },
     "vehicle": { "vin": "JN1AZ000000D67890", "model": "Serena", "year": 2022, "odometer_reading": 45091 },
     "service_details": {
       "service_date": "2025-11-20T12:15:00Z",

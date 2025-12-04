@@ -17,21 +17,34 @@ def sample_raw_data_success():
     return [
         {
             "service_record_id": "SRV-001",
-            "dealer": {"dealer_id": "DLR-A", "dealer_name": "Dealer A"},
-            "vehicle": {"vin": "VIN-123", "odometer_reading": 50000},
+            "dealer": {
+                "dealer_id": "DLR-A", 
+                "dealer_name": "Dealer A",
+                "dealer_location": "Jakarta"
+            },
+            "vehicle": {
+                "vin": "VIN-123", 
+                "odometer_reading": 50000,
+                "model": "Civic",
+                "year": 2022
+            },
             "service_details": {
                 "service_date": "2025-11-21T10:00:00Z", # UTC Timestamp
                 "total_cost": 750.0,
+                "service_advisor_name": "Budi",
                 "services_performed": [
-                    {"service_name": "Oil Change", "service_cost": 200.0},
-                    {"service_name": "Tire Rotation", "service_cost": 100.0}
+                    {"service_name": "Oil Change", "service_cost": 200.0, "service_code": "S01"},
+                    {"service_name": "Tire Rotation", "service_cost": 100.0, "service_code": "S02"}
                 ],
                 "parts_used": [
-                    {"part_name": "Oil Filter", "quantity": 1, "unit_cost": 50.0},
-                    {"part_name": "Synthetic Oil", "quantity": 5, "unit_cost": 80.0}
+                    {"part_name": "Oil Filter", "quantity": 1, "unit_cost": 50.0, "part_code": "P01"},
+                    {"part_name": "Synthetic Oil", "quantity": 5, "unit_cost": 80.0, "part_code": "P02"}
                 ]
             },
-            "customer": {"customer_id": "CUST-1"}
+            "customer": {
+                "customer_id": "CUST-1",
+                "customer_name": "Andi"
+            }
         }
     ]
 
@@ -41,15 +54,28 @@ def sample_raw_data_failure():
     return [
         {
             "service_record_id": "SRV-FAIL",
-            "dealer": {"dealer_id": "DLR-C"},
-            "vehicle": {"vin": "VIN-FAIL"},
+            "dealer": {
+                "dealer_id": "DLR-C",
+                "dealer_name": "Dealer C",
+                "dealer_location": "Surabaya"
+            },
+            "vehicle": {
+                "vin": "VIN-FAIL",
+                "odometer_reading": 10000,
+                "model": "Brio",
+                "year": 2021
+            },
             "service_details": {
                 "service_date": "2025-11-22T11:00:00Z",
                 "total_cost": -100.0, # This will cause a validation failure
+                "service_advisor_name": "Siti",
                 "services_performed": [],
                 "parts_used": []
             },
-            "customer": {"customer_id": "CUST-3"}
+            "customer": {
+                "customer_id": "CUST-3",
+                "customer_name": "Budi"
+            }
         }
     ]
 

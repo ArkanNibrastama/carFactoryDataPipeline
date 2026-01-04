@@ -2,7 +2,9 @@
 
 ## **1. Overview**
 
-This project represents a cloud-native expansion of the car factory data infrastructure. The goal is to capture and process vehicle service data from dealership service centers across Indonesia.
+This project represents a cloud-native expansion of the car factory data infrastructure. The goal is to capture and process **simulated** vehicle service data representing dealership service centers across Indonesia.
+
+> **Note:** As with the main project, all data here is **synthetically generated** to demonstrate the pipeline's ability to handle semi-structured, bursty workloads typical of real-world service networks.
 
 Unlike the standardized production line data, service records are highly variable—ranging from simple oil changes to complex engine repairs. To handle this variability and ensure scalability, we have built an event-driven, serverless data pipeline on **AWS**.
 
@@ -30,13 +32,24 @@ The pipeline utilizes a modern, serverless architecture designed for resilience 
 
 ### **2.1 Design Decisions (The "Why")**
 
-**Q: Why is the ECS Processor "Event-Driven" while the Glue Loader is "Scheduled"?**
-*   **ECS Fargate (Event-Driven):** We prioritize **low latency** for data validation. We want to know immediately if a file is valid or corrupt. SQS triggers processing as soon as data arrives.
-*   **AWS Glue (Scheduled):** We prioritize **cost and throughput** for the database load. Glue charges a minimum of 1 minute per run. Triggering it for every single small file would be prohibitively expensive (the "Small File Problem"). Batching thousands of records into a daily run makes the process efficient and cheap.
+We made some specific choices to handle the chaos of the real world. Here is why:
 
-**Q: Why use AWS Glue? Why not load directly to DynamoDB from Fargate?**
-*   **Decoupling & Specialization:** Fargate is optimized for complex, custom Python transformations and validation logic. Glue is a managed ETL service specifically optimized for moving large volumes of data between stores (S3 to DynamoDB).
-*   **Batch Efficiency:** By decoupling the load step, we allow Fargate to focus purely on processing. Glue then handles the "heavy lifting" of writing to the database in bulk, utilizing DynamoDB's batch write capabilities more effectively than individual Fargate tasks could.
+**1. Why use SQS instead of a simple schedule?**
+> **Real-World Reality:** Indonesia has **3 different time zones**. Plus, dealership operators are human—they might forget to upload data until 5 PM, or they might upload it at 2 AM.
+>
+> If we just ran a scheduled job at midnight, we'd miss the late data. By using **SQS (queues)**, the pipeline is "always on." Whether an operator uploads data from Jakarta at 9 AM or from Papua at 11 PM, the system catches it immediately. It also lets us fix errors (see point 3) and re-upload data anytime without waiting for the next day's schedule.
+
+**2. What is the Dead-Letter Queue (DLQ)?**
+> **The Safety Net:** Imagine a file is so corrupted it crashes our processor. We don't want the system to keep retrying it forever (an infinite loop).
+>
+> After 3 failed attempts, SQS kicks that bad file into the **DLQ**. This keeps the main queue clear for healthy data and saves the "bad" file so engineers can inspect it later without stopping the whole pipeline.
+
+**3. Why not load data directly into DynamoDB from ECS?**
+> **Focus & Speed:** Imagine 10,000 dealerships submitting reports at once. If our ECS containers tried to write to the database 10,000 times simultaneously, it would be slow and expensive.
+>
+> We let **ECS** focus purely on **validating and cleaning** (CPU work). We save the clean data to S3 first.
+>
+> Then, we use **AWS Glue** to bulk-load everything into DynamoDB once a day (e.g., before the 10 AM dashboard refresh). This gives the data team a window: if ECS flags bad data during the night, they can fix it and re-upload it to S3 *before* the Glue job runs. By 10 AM, the dashboard has a complete, clean dataset.
 
 ---
 
